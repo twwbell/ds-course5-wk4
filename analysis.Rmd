@@ -1,0 +1,50 @@
+---
+title: "Consequences of Severe Weather Events"
+author: "Thomas Bell"
+date: "31 juli 2017"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+
+Does the analysis address the question of which types of events are most harmful to population health?
+
+Does the analysis address the question of which types of events have the greatest economic consequences?
+
+## Data Processing
+
+```{r raw-data, cache = TRUE}
+library(dplyr)
+library(xlsx)
+library(lubridate)
+
+df <- read.csv("repdata%2Fdata%2FStormData.csv.bz2")
+
+## downloaded from https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2 on 31-7-2017 16:00 CET
+
+fips <- read.xlsx("fips_codes_website.xls", sheetIndex=1, header=TRUE) 
+
+## downloaded from http://www.census.gov/2010census/xls/fips_codes_website.xls on 2-8-2017 12:50 CET
+
+```
+
+
+
+```{r preprocessing}
+df %>% select(c(1:2,7:29)) %>% mutate(BGN_DATE = mdy(gsub(" .*","", df$BGN_DATE))) -> proc_df
+
+unique(filter(proc_df, BGN_DATE > 1996)$EVTYPE)
+
+
+```
+
+
+
+## Results
+
