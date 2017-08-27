@@ -37,9 +37,41 @@ fips <- read.xlsx("fips_codes_website.xls", sheetIndex=1, header=TRUE)
 
 
 ```{r preprocessing}
+# Drop not needed columns and convert date into Date class
 df %>% select(c(1:2,7:29)) %>% mutate(BGN_DATE = mdy(gsub(" .*","", df$BGN_DATE))) -> proc_df
 
-unique(filter(proc_df, BGN_DATE > 1996)$EVTYPE)
+# Before rationalising there are 985 levels
+nlevels(proc_df$EVTYPE)
+
+# After toupper() there are 898 levels
+proc_df$EVTYPE <- toupper(proc_df$EVTYPE)
+length(unique(proc_df$EVTYPE))
+
+# Including only measurements from 1996 (year recording of all weather types started)
+proc_df <- filter(proc_df, BGN_DATE > 1996)
+
+# Roughly merge biggest types with spelling / coding issues
+proc_df$EVTYPE[grep("^TSTM|^THUNDERSTORM|^THUNDERSTORMS", proc_df$EVTYPE)] <- "THUNDERSTORM WIND"
+proc_df$EVTYPE[grep("^MARINE TSTM|^MARINE THUNDERSTORM", proc_df$EVTYPE)] <- "MARINE THUNDERSTORM WIND"
+proc_df$EVTYPE[grep("^FLASH|^FLOOD FLASH|FLOOD/FLASH", proc_df$EVTYPE)] <- "FLASH FLOOD"
+proc_df$EVTYPE[grep("^RIP", proc_df$EVTYPE)] <- "RIP CURRENT"
+proc_df$EVTYPE[grep("HURRICANE|TYHPHOON", proc_df$EVTYPE)] <- "HURRICANE (TYPHOON)"
+unique(proc_df$EVTYPE[grep("^HIGH WIND", proc_df$EVTYPE)]) <- "HIGH WIND"
+proc_df$EVTYPE[grep("^STRONG WIND", proc_df$EVTYPE)] <- "STRONG WIND"
+proc_df$EVTYPE[grep("^HEAVY RAIN|PRECIPITATION", proc_df$EVTYPE)] <- "HEAVY RAIN"
+proc_df$EVTYPE[grep("WINTER WEATHER|WINTERY|WINTRY|WINTER MIX", proc_df$EVTYPE)] <- "WINTER WEATHER"
+
+# Create frequency table for event types
+freq_table <- sort(table(proc_df$EVTYPE), decreasing = TRUE)
+
+# 
+
+
+proc_df <- filter(proc_df, nchar(as.character(EVTYPE))<=2)
+
+
+
+type_column <- filter(proc_df, BGN_DATE > 1996)$EVTYPE
 
 
 ```
