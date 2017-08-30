@@ -63,15 +63,16 @@ proc_df$EVTYPE[grep("WINTER WEATHER|WINTERY|WINTRY|WINTER MIX", proc_df$EVTYPE)]
 
 # Create frequency table for event types
 freq_table <- sort(table(proc_df$EVTYPE), decreasing = TRUE)
+freq_table <- as.data.frame.table(freq_table)
 
-# 
+# Calculate percentages for weather types and filter above 0.1% to get weather types that cover 99.9% of measurements after 1996
+relative <- (freq_table$Freq/sum(freq_table$Freq))*100
+freq_table <- cbind(freq_table, relative)
+top_types <- as.character(filter(freq_table, relative >= 0.1)$Var1)
 
+# Filter processes data frame on top types
+proc_df <- filter(proc_df, EVTYPE %in% top_types)
 
-proc_df <- filter(proc_df, nchar(as.character(EVTYPE))<=2)
-
-
-
-type_column <- filter(proc_df, BGN_DATE > 1996)$EVTYPE
 
 
 ```
