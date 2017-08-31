@@ -19,6 +19,7 @@ Does the analysis address the question of which types of events have the greates
 
 ## Data Processing
 
+### Reading raw data
 ```{r raw-data, cache = TRUE}
 library(dplyr)
 library(xlsx)
@@ -35,8 +36,8 @@ fips <- read.xlsx("fips_codes_website.xls", sheetIndex=1, header=TRUE)
 ```
 
 
-
-```{r preprocessing}
+### Consolidating and removing not needed data
+```{r consolidating}
 # Drop not needed columns and convert date into Date class
 df %>% select(c(1:2,7:29)) %>% mutate(BGN_DATE = mdy(gsub(" .*","", df$BGN_DATE))) -> proc_df
 
@@ -56,7 +57,7 @@ proc_df$EVTYPE[grep("^MARINE TSTM|^MARINE THUNDERSTORM", proc_df$EVTYPE)] <- "MA
 proc_df$EVTYPE[grep("^FLASH|^FLOOD FLASH|FLOOD/FLASH", proc_df$EVTYPE)] <- "FLASH FLOOD"
 proc_df$EVTYPE[grep("^RIP", proc_df$EVTYPE)] <- "RIP CURRENT"
 proc_df$EVTYPE[grep("HURRICANE|TYHPHOON", proc_df$EVTYPE)] <- "HURRICANE (TYPHOON)"
-unique(proc_df$EVTYPE[grep("^HIGH WIND", proc_df$EVTYPE)]) <- "HIGH WIND"
+proc_df$EVTYPE[grep("^HIGH WIND", proc_df$EVTYPE)] <- "HIGH WIND"
 proc_df$EVTYPE[grep("^STRONG WIND", proc_df$EVTYPE)] <- "STRONG WIND"
 proc_df$EVTYPE[grep("^HEAVY RAIN|PRECIPITATION", proc_df$EVTYPE)] <- "HEAVY RAIN"
 proc_df$EVTYPE[grep("WINTER WEATHER|WINTERY|WINTRY|WINTER MIX", proc_df$EVTYPE)] <- "WINTER WEATHER"
@@ -65,19 +66,43 @@ proc_df$EVTYPE[grep("WINTER WEATHER|WINTERY|WINTRY|WINTER MIX", proc_df$EVTYPE)]
 freq_table <- sort(table(proc_df$EVTYPE), decreasing = TRUE)
 freq_table <- as.data.frame.table(freq_table)
 
-# Calculate percentages for weather types and filter above 0.1% to get weather types that cover 99.9% of measurements after 1996
+# Calculate percentages for weather types and filter above 1% to get weather types that cover 99% of measurements after 1996
 relative <- (freq_table$Freq/sum(freq_table$Freq))*100
 freq_table <- cbind(freq_table, relative)
-top_types <- as.character(filter(freq_table, relative >= 0.1)$Var1)
+top_types <- as.character(filter(freq_table, relative >= 1)$Var1)
 
 # Filter processes data frame on top types
 proc_df <- filter(proc_df, EVTYPE %in% top_types)
-
-
-
+top_types
 ```
 
+### Property and crop damage
+```{r propcrop}
+# Function to set exponent based on rules provided in analysis by David Hood https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html
 
+get_exponent <- function(exp) {
+        exp <- tolower(exp)
+        if (exp == "h") {
+                out <- 100
+        } else if (exp == "k") {
+                out <- 1000
+        } else if (exp == "m") {
+                out <- 1000000
+        } else if (exp == "b") {
+                out <- 10000000
+        } else if (exp == "+") {
+                out <- 1
+        } else if (as.numeric(exp) %in% 0:8) {
+                out <- 10
+        } else {out <- 0}
+        out
+}
+
+# Converte prop and crop damage to absolute amounts
+proc_df$PROPDMG <- proc_df$PROPDMG * sapply(proc_df$PROPDMGEXP, get_exponent)
+proc_df$CROPDMG <- proc_df$CROPDMG * sapply(proc_df$CROPDMGEXP, get_exponent)
+
+```
 
 ## Results
 
